@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -13,11 +12,8 @@ type PostgresqlConnector struct {
 	ServerUrls string
 	Database *sql.DB
 	Transaction *sql.Tx
-}
-
-type Item struct {
-	ID    string
-	Attrs Attrs
+	TableName string
+	AttrsColumnName string
 }
 
 type Attrs map[string]interface{}
@@ -56,20 +52,17 @@ func(c *PostgresqlConnector) RollbackTransaction() error {
 	return c.Transaction.Rollback()
 }
 
-func(c *PostgresqlConnector) InsertJsonRecord(tableName string, columnName string, item Item) error {
-	if len(item.ID) == 0 {
-		item.ID = uuid.New().String()
-	}
-	_, err := c.Transaction.Exec("INSERT INTO $1 VALUES ($2, $3)", tableName, item.ID, item.Attrs)
+func(c *PostgresqlConnector) InsertJsonRecord(attrs Attrs) error {
+	_, err := c.Transaction.Exec("INSERT INTO $1 ($2) VALUES ($3)", c.TableName, c.AttrsColumnName, attrs)
 	return err
 }
 
-func(c *PostgresqlConnector) UpdateJsonRecord(tableName string, item Item) error {
-	_, err := c.Transaction.Exec("UPDATE $1 SET Attrs = $2 WHERE ID=$3", tableName, item.Attrs, item.ID)
+func(c *PostgresqlConnector) UpdateJsonRecord(id string, attrs Attrs) error {
+	_, err := c.Transaction.Exec("UPDATE $1 SET $2 = $4 WHERE ID=$4", c.TableName, c.AttrsColumnName, attrs, id)
 	return err
 }
 
-func(c *PostgresqlConnector) DeleteJsonRecord(tableName string, item Item) error {
-	_, err := c.Transaction.Exec("DELETE FROM $1 WHERE ID=$2", tableName, item.ID)
+func(c *PostgresqlConnector) DeleteJsonRecord(id string) error {
+	_, err := c.Transaction.Exec("DELETE FROM $1 WHERE ID=$2", c.TableName, id)
 	return err	
 }
