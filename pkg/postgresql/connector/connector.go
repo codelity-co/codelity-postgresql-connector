@@ -113,13 +113,16 @@ func (c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
 }
 
 func (c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	jsonRecord.table = c.TableName
 	return txn.Create(&jsonRecord).Error
 }
 
 func (c *PostgresqlConnector) UpdateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	jsonRecord.table = c.TableName
 	return txn.Save(&jsonRecord).Error
 }
 
 func (c *PostgresqlConnector) DeleteJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	jsonRecord.table = c.TableName
 	return txn.Delete(&jsonRecord).Error
 }
