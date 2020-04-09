@@ -22,7 +22,7 @@ type PostgresqlConnector struct {
 type AttrsType map[string]interface{}
 
 func (at AttrsType) Value() (driver.Value, error) {
-	j, err := json.Marshal(p)
+	j, err := json.Marshal(at)
 	return j, err
 }
 
