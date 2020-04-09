@@ -86,7 +86,7 @@ func (c *PostgresqlConnector) Close() error {
 }
 
 func (c *PostgresqlConnector) AutoMigrate() error {
-	return c.Database.AutoMigrate(JsonRecord{table: c.TableName}).Error
+	return c.Database.AutoMigrate(&JsonRecord{table: c.TableName}).Error
 }
 
 func (c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
@@ -105,28 +105,15 @@ func (c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
 	txn.Rollback()
 }
 
-func (c *PostgresqlConnector) NewRecord() (*JsonRecord, error) {
-	newUuid, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
-	return &JsonRecord{
-		ID:    newUuid,
-		table: c.TableName,
-	}, nil
-}
-
 func (c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
-	jsonRecord.table = c.TableName
-	return txn.Create(&jsonRecord).Error
+	return txn.Table(c.TableName).Create(jsonRecord).Error
 }
 
 func (c *PostgresqlConnector) UpdateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
-	jsonRecord.table = c.TableName
-	return txn.Save(&jsonRecord).Error
+	return txn.Table(c.TableName).Save(jsonRecord).Error
 }
 
 func (c *PostgresqlConnector) DeleteJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
-	jsonRecord.table = c.TableName
-	return txn.Delete(&jsonRecord).Error
+
+	return txn.Table(c.TableName).Delete(jsonRecord).Error
 }
