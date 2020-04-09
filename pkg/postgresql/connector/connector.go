@@ -9,10 +9,9 @@ import (
 )
 
 type PostgresqlConnector struct {
-	ServerUrls string
+	Dsn string
 	ConnectionOptions map[string]interface{}
 	TableName string
-	AttrsColumnName string
 	Database *gorm.DB
 }
 
@@ -35,12 +34,17 @@ func (entity *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
 
 func(c *PostgresqlConnector) Connect() error {
 	var connectString string
-	for k, v := range c.ConnectionOptions {
-		if len(connectString) > 0 {
-			connectString = connectString + " "
+	if len(c.Dsn) > 0 {
+		connectString = c.Dsn
+	} else {
+		for k, v := range c.ConnectionOptions {
+			if len(connectString) > 0 {
+				connectString = connectString + " "
+			}
+			connectString = connectString + fmt.Sprintf("%v=%v", k, v) //nolint:govet
 		}
-		connectString = connectString + fmt.Sprintf("%v=%v", k, v) //nolint:govet
 	}
+
 	if db, err := gorm.Open("postgres", connectString); err != nil {
 		return err
 	} else {
