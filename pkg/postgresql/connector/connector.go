@@ -53,6 +53,7 @@ type JsonRecord struct {
 }
 
 func (r JsonRecord) TableName() string {
+
 	if r.table != "" {
 		return r.table
 	}
@@ -85,7 +86,7 @@ func (c *PostgresqlConnector) Close() error {
 }
 
 func (c *PostgresqlConnector) AutoMigrate() error {
-	return c.Database.AutoMigrate(&JsonRecord{table: c.TableName}).Error
+	return c.Database.AutoMigrate(JsonRecord{table: c.TableName}).Error
 }
 
 func (c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
@@ -110,7 +111,7 @@ func (c *PostgresqlConnector) NewRecord() (*JsonRecord, error) {
 		return nil, err
 	}
 	return &JsonRecord{
-		ID: newUuid,
+		ID:    newUuid,
 		table: c.TableName,
 	}, nil
 }
