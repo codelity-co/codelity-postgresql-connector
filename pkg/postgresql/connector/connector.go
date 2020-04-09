@@ -45,8 +45,8 @@ func(c *PostgresqlConnector) Close () error {
 	return c.Database.Close()
 }
 
-func(c *PostgresqlConnector) AutoMigrate() {
-	c.Database.AutoMigrate(&JsonRecord{table: c.TableName})
+func(c *PostgresqlConnector) AutoMigrate() error {
+	return c.Database.AutoMigrate(&JsonRecord{table: c.TableName}).Error
 }
 
 func(c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
