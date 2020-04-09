@@ -1,47 +1,73 @@
 package connector
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/lib/pq"
-	"github.com/google/uuid"
 )
 
 type PostgresqlConnector struct {
-	Dsn string
+	Dsn               string
 	ConnectionOptions map[string]interface{}
-	TableName string
-	Database *gorm.DB
+	TableName         string
+	Database          *gorm.DB
 }
 
 type AttrsType map[string]interface{}
 
+func (at AttrsType) Value() (driver.Value, error) {
+	j, err := json.Marshal(p)
+	return j, err
+}
+
+func (p *AttrsType) Scan(src interface{}) error {
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	var i interface{}
+	if err := json.Unmarshal(source, &i); err != nil {
+		return err
+	}
+
+	*p, ok = i.(map[string]interface{})
+	if !ok {
+		return errors.New("Type assertion .(map[string]interface{}) failed.")
+	}
+
+	return nil
+}
+
 type JsonRecord struct {
-	ID uuid.UUID `gorm:"type:uuid;column:ID;primary_key;"`
-	Attrs AttrsType `gorm:"type:json;column:Attrs;"`
+	ID    uuid.UUID `gorm:"type:uuid;column:ID;primary_key;"`
+	Attrs AttrsType `gorm:"type:json;not null;default '{}'"`
 
 	table string `gorm:"-"`
 }
 
 func (r JsonRecord) TableName() string {
-  if r.table != "" {
-    return r.table
-  }
-  return "json_records" 
+	if r.table != "" {
+		return r.table
+	}
+	return "json_records"
 }
 
-
-func (entity *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
+func (r *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-	 return err
+		return err
 	}
 	return scope.SetColumn("ID", uuid)
- }
+}
 
-func(c *PostgresqlConnector) Connect() error {
+func (c *PostgresqlConnector) Connect() error {
 	var connectString string
 	if len(c.Dsn) > 0 {
 		connectString = c.Dsn
@@ -62,15 +88,15 @@ func(c *PostgresqlConnector) Connect() error {
 	return nil
 }
 
-func(c *PostgresqlConnector) Close () error {
+func (c *PostgresqlConnector) Close() error {
 	return c.Database.Close()
 }
 
-func(c *PostgresqlConnector) AutoMigrate() error {
+func (c *PostgresqlConnector) AutoMigrate() error {
 	return c.Database.AutoMigrate(&JsonRecord{table: c.TableName}).Error
 }
 
-func(c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
+func (c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
 	txn := c.Database.Begin()
 	if txn == nil {
 		return nil, fmt.Errorf("Cannot start database transaction")
@@ -78,22 +104,22 @@ func(c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
 	return txn, nil
 }
 
-func(c *PostgresqlConnector) CommitTransaction(txn *gorm.DB) error {
+func (c *PostgresqlConnector) CommitTransaction(txn *gorm.DB) error {
 	return txn.Commit().Error
 }
 
-func(c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
+func (c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
 	txn.Rollback()
 }
 
-func(c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+func (c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
 	return txn.Create(&jsonRecord).Error
 }
 
-func(c *PostgresqlConnector) UpdateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+func (c *PostgresqlConnector) UpdateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
 	return txn.Save(&jsonRecord).Error
 }
 
-func(c *PostgresqlConnector) DeleteJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+func (c *PostgresqlConnector) DeleteJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
 	return txn.Delete(&jsonRecord).Error
 }
