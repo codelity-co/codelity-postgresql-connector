@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
