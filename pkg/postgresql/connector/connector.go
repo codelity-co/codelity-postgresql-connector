@@ -25,6 +25,14 @@ type JsonRecord struct {
 	table string `gorm:"-"`
 }
 
+func (r JsonRecord) TableName() string {
+  if r.table != "" {
+    return r.table
+  }
+  return "json_records" 
+}
+
+
 func (entity *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
 	uuid, err := uuid.NewUUID()
 	if err != nil {
