@@ -1,29 +1,39 @@
 package connector
 
 import (
-	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
+	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/google/uuid"
 )
 
 type PostgresqlConnector struct {
 	ServerUrls string
-	Database *sql.DB
-	Transaction *sql.Tx
 	TableName string
 	AttrsColumnName string
+	Database *gorm.DB
 }
 
-type Attrs map[string]interface{}
+type AttrsType map[string]interface{}
 
-func (a Attrs) Value() (driver.Value, error) {
-    return json.Marshal(a)
+type JsonRecord struct {
+	ID uuid.UUID `gorm:"type:uuid;column:ID;primary_key;"`
+	Attrs AttrsType `gorm:"type:json;column:Attrs;"`
+
+	table string `gorm:"-"`
 }
+
+func (entity *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+	 return err
+	}
+	return scope.SetColumn("ID", uuid)
+ }
 
 func(c *PostgresqlConnector) Connect() error {
-	if db, err := sql.Open("postgres", c.ServerUrls); err != nil {
+	if db, err := gorm.Open("postgres", c.ServerUrls); err != nil {
 		return err
 	} else {
 		c.Database = db
@@ -35,34 +45,34 @@ func(c *PostgresqlConnector) Close () error {
 	return c.Database.Close()
 }
 
-func(c *PostgresqlConnector) BeginTransaction() error {
-	txn, err := c.Database.Begin()
-	if err != nil {
-		return err
+func(c *PostgresqlConnector) AutoMigrate() {
+	c.Database.AutoMigrate(&JsonRecord{table: c.TableName})
+}
+
+func(c *PostgresqlConnector) BeginTransaction() (*gorm.DB, error) {
+	txn := c.Database.Begin()
+	if txn == nil {
+		return nil, fmt.Errorf("Cannot start database transaction")
 	}
-	c.Transaction = txn
-	return nil
+	return txn, nil
 }
 
-func(c *PostgresqlConnector) CommitTransaction() error {
-	return c.Transaction.Commit()
+func(c *PostgresqlConnector) CommitTransaction(txn *gorm.DB) error {
+	return txn.Commit().Error
 }
 
-func(c *PostgresqlConnector) RollbackTransaction() error {
-	return c.Transaction.Rollback()
+func(c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
+	txn.Rollback()
 }
 
-func(c *PostgresqlConnector) InsertJsonRecord(attrs Attrs) error {
-	_, err := c.Transaction.Exec("INSERT INTO $1 ($2) VALUES ($3)", c.TableName, c.AttrsColumnName, attrs)
-	return err
+func(c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	return txn.Create(&jsonRecord).Error
 }
 
-func(c *PostgresqlConnector) UpdateJsonRecord(id string, attrs Attrs) error {
-	_, err := c.Transaction.Exec("UPDATE $1 SET $2 = $4 WHERE ID=$4", c.TableName, c.AttrsColumnName, attrs, id)
-	return err
+func(c *PostgresqlConnector) UpdateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	return txn.Save(&jsonRecord).Error
 }
 
-func(c *PostgresqlConnector) DeleteJsonRecord(id string) error {
-	_, err := c.Transaction.Exec("DELETE FROM $1 WHERE ID=$2", c.TableName, id)
-	return err	
+func(c *PostgresqlConnector) DeleteJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
+	return txn.Delete(&jsonRecord).Error
 }
