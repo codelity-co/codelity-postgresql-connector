@@ -59,14 +59,6 @@ func (r JsonRecord) TableName() string {
 	return "json_records"
 }
 
-func (r *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
-	uuid, err := uuid.NewUUID()
-	if err != nil {
-		return err
-	}
-	return scope.SetColumn("ID", uuid)
-}
-
 func (c *PostgresqlConnector) Connect() error {
 	var connectString string
 	if len(c.Dsn) > 0 {
@@ -110,6 +102,17 @@ func (c *PostgresqlConnector) CommitTransaction(txn *gorm.DB) error {
 
 func (c *PostgresqlConnector) RollbackTransaction(txn *gorm.DB) {
 	txn.Rollback()
+}
+
+func (c *PostgresqlConnector) NewRecord() (*JsonRecord, error) {
+	newUuid, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+	return &JsonRecord{
+		ID: newUuid,
+		table: c.TableName,
+	}, nil
 }
 
 func (c *PostgresqlConnector) CreateJsonRecord(txn *gorm.DB, jsonRecord *JsonRecord) error {
