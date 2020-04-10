@@ -60,6 +60,14 @@ func (r JsonRecord) TableName() string {
 	return "json_records"
 }
 
+func (r *JsonRecord) BeforeCreate(scope *gorm.Scope) error {
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		return err
+	}
+	return scope.SetColumn("ID", uuid)
+}
+
 func (c *PostgresqlConnector) Connect() error {
 	var connectString string
 	if len(c.Dsn) > 0 {
